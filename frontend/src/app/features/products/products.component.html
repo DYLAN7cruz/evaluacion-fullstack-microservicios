@@ -1,0 +1,369 @@
+<div class="container">
+  <!-- Encabezado de Página -->
+  <div class="page-header">
+    <div class="page-title">
+      <h1>Catálogo de Productos</h1>
+      <p>Gestión centralizada de existencias, precios y estado del inventario</p>
+    </div>
+    <div>
+      <button class="btn btn-primary" (click)="openCreateModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nuevo Producto</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel de Búsqueda y Filtros Avanzados -->
+  <div class="card">
+    <form [formGroup]="filterForm" (ngSubmit)="applyFilters()">
+      <div class="filters-grid">
+        <div class="form-group">
+          <label class="form-label">Buscar producto</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            placeholder="Nombre, código o descripción..."
+            formControlName="searchTerm"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select class="form-control" formControlName="category">
+            <option value="">Todas las categorías</option>
+            <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <select class="form-control" formControlName="isActive">
+            <option value="">Todos los estados</option>
+            <option value="true">Activos</option>
+            <option value="false">Inactivos</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="submit" class="btn btn-primary" style="flex: 1;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Buscar</span>
+          </button>
+          <button type="button" class="btn btn-outline" (click)="resetFilters()">
+            Limpiar
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Tabla Dinámica de Productos -->
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 60px;">Imagen</th>
+          <th>Código</th>
+          <th>Nombre</th>
+          <th>Categoría</th>
+          <th style="text-align: right;">Precio</th>
+          <th style="text-align: center;">Stock</th>
+          <th style="text-align: center;">Estado</th>
+          <th style="text-align: right;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Cargando -->
+        <tr *ngIf="isLoading">
+          <td colspan="8" class="state-box">
+            <span>Cargando productos del catálogo...</span>
+          </td>
+        </tr>
+
+        <!-- Sin datos -->
+        <tr *ngIf="!isLoading && pagedResult.items.length === 0">
+          <td colspan="8" class="state-box">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-light); margin: 0 auto;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            <p>No se encontraron productos con los criterios especificados.</p>
+          </td>
+        </tr>
+
+        <!-- Filas de datos -->
+        <tr *ngFor="let p of pagedResult.items">
+          <td>
+            <div class="product-thumb">
+              <img 
+                *ngIf="p.imageUrl" 
+                [src]="p.imageUrl" 
+                alt="{{ p.name }}" 
+                onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'44\' height=\'44\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'1.5\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\'/><circle cx=\'8.5\' cy=\'8.5\' r=\'1.5\'/><polyline points=\'21 15 16 10 5 21\'/></svg>'" 
+              />
+              <div *ngIf="!p.imageUrl" class="thumb-placeholder">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="code-badge">{{ p.code }}</span>
+          </td>
+          <td>
+            <div class="product-name-col">
+              <strong>{{ p.name }}</strong>
+              <small *ngIf="p.description">{{ p.description }}</small>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-info">{{ p.category }}</span>
+          </td>
+          <td style="text-align: right; font-weight: 600; color: var(--primary);">
+            {{ p.price | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+          <td style="text-align: center;">
+            <span class="badge" [ngClass]="p.stock > 0 ? 'badge-primary' : 'badge-danger'">
+              {{ p.stock }} uds
+            </span>
+          </td>
+          <td style="text-align: center;">
+            <span class="badge" [ngClass]="p.isActive ? 'badge-success' : 'badge-danger'">
+              {{ p.isActive ? 'Activo' : 'Inactivo' }}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <div class="action-buttons">
+              <button class="btn btn-outline btn-sm" (click)="openEditModal(p)" title="Editar producto">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <span>Editar</span>
+              </button>
+              <button class="btn btn-danger-outline btn-sm" (click)="confirmDelete(p)" title="Eliminar producto">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                <span>Eliminar</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Controles de Paginación -->
+  <div class="pagination" *ngIf="pagedResult.totalCount > 0">
+    <div class="pagination-info">
+      Mostrando página <strong>{{ pagedResult.page }}</strong> de <strong>{{ pagedResult.totalPages }}</strong> (Total: {{ pagedResult.totalCount }} productos)
+    </div>
+    <div class="pagination-actions">
+      <button 
+        class="btn btn-outline btn-sm" 
+        [disabled]="!pagedResult.hasPreviousPage || isLoading"
+        (click)="loadProducts(pagedResult.page - 1)"
+      >
+        &laquo; Anterior
+      </button>
+      <button 
+        class="btn btn-outline btn-sm" 
+        [disabled]="!pagedResult.hasNextPage || isLoading"
+        (click)="loadProducts(pagedResult.page + 1)"
+      >
+        Siguiente &raquo;
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- Modal: Crear / Editar Producto (Formulario Reactivo con Validaciones) -->
+<!-- ========================================================================= -->
+<div class="modal-overlay" *ngIf="isModalOpen">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>{{ isEditing ? 'Editar Producto' : 'Registrar Nuevo Producto' }}</h3>
+      <button class="modal-close" (click)="closeModal()">&times;</button>
+    </div>
+
+    <form [formGroup]="productForm" (ngSubmit)="saveProduct()">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <!-- Código -->
+          <div class="form-group">
+            <label class="form-label">Código único *</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              [ngClass]="{'is-invalid': isFieldInvalid('code')}"
+              formControlName="code" 
+              placeholder="Ej: PROD-005"
+            />
+            <span class="form-error" *ngIf="isFieldInvalid('code')">
+              El código es obligatorio (mínimo 3 caracteres).
+            </span>
+          </div>
+
+          <!-- Categoría -->
+          <div class="form-group">
+            <label class="form-label">Categoría *</label>
+            <select 
+              class="form-control" 
+              [ngClass]="{'is-invalid': isFieldInvalid('category')}"
+              formControlName="category"
+            >
+              <option value="">Seleccione categoría</option>
+              <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+            </select>
+            <span class="form-error" *ngIf="isFieldInvalid('category')">
+              Seleccione una categoría válida.
+            </span>
+          </div>
+        </div>
+
+        <!-- Nombre -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">Nombre del producto *</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            [ngClass]="{'is-invalid': isFieldInvalid('name')}"
+            formControlName="name" 
+            placeholder="Ej: Monitor Dell UltraSharp 27"
+          />
+          <span class="form-error" *ngIf="isFieldInvalid('name')">
+            El nombre es obligatorio (mínimo 3 caracteres).
+          </span>
+        </div>
+
+        <!-- Descripción -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">Descripción</label>
+          <textarea 
+            class="form-control" 
+            rows="2" 
+            formControlName="description" 
+            placeholder="Especificaciones o notas breves..."
+          ></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;">
+          <!-- Precio -->
+          <div class="form-group">
+            <label class="form-label">Precio de Catálogo ($) *</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              class="form-control" 
+              [ngClass]="{'is-invalid': isFieldInvalid('price')}"
+              formControlName="price" 
+              placeholder="0.00"
+            />
+            <span class="form-error" *ngIf="isFieldInvalid('price')">
+              El precio debe ser mayor a 0.
+            </span>
+          </div>
+
+          <!-- Stock Inicial (Solo en Creación) -->
+          <div class="form-group" *ngIf="!isEditing">
+            <label class="form-label">Stock Inicial *</label>
+            <input 
+              type="number" 
+              class="form-control" 
+              [ngClass]="{'is-invalid': isFieldInvalid('stock')}"
+              formControlName="stock" 
+              placeholder="0"
+            />
+            <span class="form-error" *ngIf="isFieldInvalid('stock')">
+              El stock debe ser 0 o mayor.
+            </span>
+          </div>
+
+          <!-- Estado Activo (En Edición) -->
+          <div class="form-group" *ngIf="isEditing">
+            <label class="form-label">Estado</label>
+            <select class="form-control" formControlName="isActive">
+              <option [ngValue]="true">Activo</option>
+              <option [ngValue]="false">Inactivo</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- URL de Imagen -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">URL de Imagen (Opcional)</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <input 
+              type="url" 
+              class="form-control" 
+              formControlName="imageUrl" 
+              placeholder="https://ejemplo.com/foto.jpg"
+              style="flex: 1;"
+            />
+            <div class="preview-thumb" *ngIf="productForm.get('imageUrl')?.value">
+              <img 
+                [src]="productForm.get('imageUrl')?.value" 
+                alt="Vista previa" 
+                onerror="this.style.display='none'"
+              />
+            </div>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px;">
+            Tip: En Google, abre la imagen en grande, haz clic derecho y elige <strong>"Copiar dirección de imagen"</strong>.
+          </small>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="closeModal()" [disabled]="isSaving">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+          <span *ngIf="isSaving">Guardando...</span>
+          <span *ngIf="!isSaving">{{ isEditing ? 'Guardar Cambios' : 'Crear Producto' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- Modal: Confirmar Eliminación (Protección contra registros con historial) -->
+<!-- ========================================================================= -->
+<div class="modal-overlay" *ngIf="isDeleteModalOpen">
+  <div class="modal-content" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3 style="color: var(--danger);">Eliminar Producto</h3>
+      <button class="modal-close" (click)="closeDeleteModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 0.925rem; color: var(--text-main);">
+        ¿Está seguro que desea eliminar el producto <strong>{{ productToDelete?.name }}</strong> ({{ productToDelete?.code }})?
+      </p>
+      <div style="margin-top: 12px; padding: 10px; background: var(--bg-hover); border-radius: 6px; font-size: 0.8125rem; color: var(--text-muted);">
+        <strong>Nota bancaria:</strong> Si el producto ya registra movimientos en transacciones, el sistema rechazará la eliminación por integridad contable.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closeDeleteModal()" [disabled]="isDeleting">
+        Cancelar
+      </button>
+      <button class="btn btn-danger-outline" (click)="deleteProduct()" [disabled]="isDeleting">
+        <span *ngIf="isDeleting">Eliminando...</span>
+        <span *ngIf="!isDeleting">Confirmar Eliminación</span>
+      </button>
+    </div>
+  </div>
+</div>

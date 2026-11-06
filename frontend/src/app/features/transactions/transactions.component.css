@@ -1,0 +1,115 @@
+.type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.type-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.type-option:hover {
+  background: var(--bg-hover);
+}
+
+.type-option.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.stock-info-callout {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.stock-info-callout strong {
+  color: var(--text-main);
+}
+
+.alert-danger {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background-color: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  color: #991b1b;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.total-callout {
+  padding: 14px 16px;
+  background: var(--primary-light);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.total-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.price-unit {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+}
+
+.price-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  background-color: var(--primary-light);
+  color: var(--primary);
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  border: 1px solid var(--primary-border);
+  letter-spacing: -0.01em;
+}
+
+.price-currency {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.price-amount {
+  font-size: 0.875rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+}

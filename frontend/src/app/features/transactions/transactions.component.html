@@ -1,0 +1,306 @@
+<div class="container">
+  <!-- Encabezado de Página -->
+  <div class="page-header">
+    <div class="page-title">
+      <h1>Registro de Transacciones</h1>
+      <p>Libro mayor de movimientos contables de inventario (Entradas y Salidas)</p>
+    </div>
+    <div>
+      <button class="btn btn-primary" (click)="openCreateModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Registrar Movimiento</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel de Filtros Avanzados -->
+  <div class="card">
+    <form [formGroup]="filterForm" (ngSubmit)="applyFilters()">
+      <div class="filters-grid">
+        <!-- Rango de Fechas: Desde -->
+        <div class="form-group">
+          <label class="form-label">Fecha Desde</label>
+          <input type="date" class="form-control" formControlName="startDate" />
+        </div>
+
+        <!-- Rango de Fechas: Hasta -->
+        <div class="form-group">
+          <label class="form-label">Fecha Hasta</label>
+          <input type="date" class="form-control" formControlName="endDate" />
+        </div>
+
+        <!-- Tipo de Transacción -->
+        <div class="form-group">
+          <label class="form-label">Tipo de Movimiento</label>
+          <select class="form-control" formControlName="transactionType">
+            <option value="">Todos los tipos</option>
+            <option value="Compra">Compra (Entrada)</option>
+            <option value="Venta">Venta (Salida)</option>
+          </select>
+        </div>
+
+        <!-- Producto -->
+        <div class="form-group">
+          <label class="form-label">Filtrar por Producto</label>
+          <select class="form-control" formControlName="productId">
+            <option value="">Todos los productos</option>
+            <option *ngFor="let prod of availableProducts" [value]="prod.id">
+              {{ prod.code }} - {{ prod.name }}
+            </option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="submit" class="btn btn-primary" style="flex: 1;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Filtrar</span>
+          </button>
+          <button type="button" class="btn btn-outline" (click)="resetFilters()">
+            Limpiar
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Tabla Dinámica de Transacciones -->
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Fecha / Hora</th>
+          <th style="text-align: center;">Tipo</th>
+          <th>Producto</th>
+          <th style="text-align: center;">Cantidad</th>
+          <th style="text-align: right;">Precio Unit.</th>
+          <th style="text-align: right;">Total</th>
+          <th>Detalle / Concepto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Cargando -->
+        <tr *ngIf="isLoading">
+          <td colspan="7" class="state-box">
+            <span>Cargando transacciones registradas...</span>
+          </td>
+        </tr>
+
+        <!-- Sin datos -->
+        <tr *ngIf="!isLoading && pagedResult.items.length === 0">
+          <td colspan="7" class="state-box">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-light); margin: 0 auto;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            <p>No se encontraron movimientos contables registrados.</p>
+          </td>
+        </tr>
+
+        <!-- Filas de datos -->
+        <tr *ngFor="let t of pagedResult.items">
+          <td>
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-weight: 600;">{{ t.transactionDate | date:'dd/MM/yyyy' }}</span>
+              <small style="color: var(--text-muted);">{{ t.transactionDate | date:'HH:mm:ss' }}</small>
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <span class="badge" [ngClass]="t.transactionType === 'Venta' ? 'badge-primary' : 'badge-info'">
+              {{ t.transactionType }}
+            </span>
+          </td>
+          <td>
+            <div style="display: flex; flex-direction: column;">
+              <strong>{{ t.productName || 'Producto no disponible' }}</strong>
+              <small style="color: var(--text-muted); font-family: monospace;">{{ t.productCode || 'N/A' }}</small>
+            </div>
+          </td>
+          <td style="text-align: center; font-weight: 600;">
+            <span [ngClass]="t.transactionType === 'Venta' ? 'text-danger' : 'text-success'">
+              {{ t.transactionType === 'Venta' ? '-' : '+' }}{{ t.quantity }} uds
+            </span>
+          </td>
+          <td style="text-align: right; color: var(--text-muted);">
+            {{ t.unitPrice | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+          <td style="text-align: right; font-weight: 700; color: var(--primary);">
+            {{ t.totalPrice | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+          <td>
+            <span style="color: var(--text-main); font-size: 0.8125rem;">
+              {{ t.detail || 'Sin detalle especificado' }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación -->
+  <div class="pagination" *ngIf="pagedResult.totalCount > 0">
+    <div class="pagination-info">
+      Mostrando página <strong>{{ pagedResult.page }}</strong> de <strong>{{ pagedResult.totalPages }}</strong> (Total: {{ pagedResult.totalCount }} movimientos)
+    </div>
+    <div class="pagination-actions">
+      <button 
+        class="btn btn-outline btn-sm" 
+        [disabled]="!pagedResult.hasPreviousPage || isLoading"
+        (click)="loadTransactions(pagedResult.page - 1)"
+      >
+        &laquo; Anterior
+      </button>
+      <button 
+        class="btn btn-outline btn-sm" 
+        [disabled]="!pagedResult.hasNextPage || isLoading"
+        (click)="loadTransactions(pagedResult.page + 1)"
+      >
+        Siguiente &raquo;
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- Modal: Registrar Movimiento (Con Regla Compleja de Validación de Stock) -->
+<!-- ========================================================================= -->
+<div class="modal-overlay" *ngIf="isModalOpen">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Registrar Transacción Contable</h3>
+      <button class="modal-close" (click)="closeModal()">&times;</button>
+    </div>
+
+    <form [formGroup]="transactionForm" (ngSubmit)="saveTransaction()">
+      <div class="modal-body">
+        <!-- Tipo de Transacción -->
+        <div class="form-group">
+          <label class="form-label">Tipo de Operación *</label>
+          <div class="type-selector">
+            <label class="type-option" [class.selected]="transactionForm.get('transactionType')?.value === 'Venta'">
+              <input type="radio" value="Venta" formControlName="transactionType" />
+              <span>Venta (Salida de Stock)</span>
+            </label>
+            <label class="type-option" [class.selected]="transactionForm.get('transactionType')?.value === 'Compra'">
+              <input type="radio" value="Compra" formControlName="transactionType" />
+              <span>Compra (Ingreso de Stock)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Producto -->
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label">Seleccionar Producto *</label>
+          <select 
+            class="form-control" 
+            [ngClass]="{'is-invalid': isFieldInvalid('productId')}"
+            formControlName="productId"
+          >
+            <option value="">-- Elija un producto del catálogo --</option>
+            <option *ngFor="let p of availableProducts" [value]="p.id">
+              {{ p.code }} - {{ p.name }} (Stock actual: {{ p.stock }})
+            </option>
+          </select>
+          <span class="form-error" *ngIf="isFieldInvalid('productId')">
+            Debe seleccionar un producto.
+          </span>
+        </div>
+
+        <!-- Info del Producto Seleccionado -->
+        <div *ngIf="selectedProduct" class="stock-info-callout">
+          <div class="info-row">
+            <span>Existencia actual:</span>
+            <strong>{{ selectedProduct.stock }} unidades</strong>
+          </div>
+          <div class="info-row">
+            <span>Precio de lista en catálogo:</span>
+            <strong>{{ selectedProduct.price | currency:'USD':'symbol':'1.2-2' }}</strong>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+          <!-- Cantidad -->
+          <div class="form-group">
+            <label class="form-label">Cantidad *</label>
+            <input 
+              type="number" 
+              class="form-control" 
+              [ngClass]="{'is-invalid': isFieldInvalid('quantity') || hasInsufficientStock}"
+              formControlName="quantity" 
+              min="1"
+            />
+            <span class="form-error" *ngIf="isFieldInvalid('quantity')">
+              La cantidad debe ser mínimo 1.
+            </span>
+          </div>
+
+          <!-- Precio Unitario -->
+          <div class="form-group">
+            <label class="form-label">Precio Unitario ($) *</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              class="form-control" 
+              [ngClass]="{'is-invalid': isFieldInvalid('unitPrice')}"
+              formControlName="unitPrice" 
+              min="0"
+            />
+            <span class="form-error" *ngIf="isFieldInvalid('unitPrice')">
+              El precio debe ser 0 o superior.
+            </span>
+          </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- ALERTA DE REGLA COMPLEJA: Stock Insuficiente -->
+        <!-- ================================================================= -->
+        <div *ngIf="hasInsufficientStock" class="alert-danger" style="margin-top: 14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <div>
+            <strong>Stock Insuficiente:</strong> No se puede realizar una venta por {{ transactionForm.get('quantity')?.value }} unidades. El producto solo cuenta con <strong>{{ selectedProduct?.stock }}</strong> disponibles.
+          </div>
+        </div>
+
+        <!-- Subtotal Calculado en Vivo -->
+        <div class="total-callout" style="margin-top: 16px;">
+          <span>Total de la Transacción:</span>
+          <span class="total-amount">{{ calculatedTotal | currency:'USD':'symbol':'1.2-2' }}</span>
+        </div>
+
+        <!-- Detalle o Concepto -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">Detalle / Concepto</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            formControlName="detail" 
+            placeholder="Ej: Factura #0012, reposición de inventario..."
+          />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="closeModal()" [disabled]="isSaving">
+          Cancelar
+        </button>
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          [disabled]="isSaving || hasInsufficientStock || transactionForm.invalid"
+        >
+          <span *ngIf="isSaving">Procesando...</span>
+          <span *ngIf="!isSaving">Confirmar Transacción</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
