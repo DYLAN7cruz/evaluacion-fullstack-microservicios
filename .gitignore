@@ -1,0 +1,35 @@
+
+# Compilación y temporales de .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.binlog
+*.log
+
+# Dependencias de Frontend (Node / Angular)
+node_modules/
+dist/
+.angular/
+.npm/
+
+# Entornos y secretos locales
+.env
+appsettings.Production.json
+
+# IDEs y editores
+.vs/
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Base de datos local y temporales de sistema
+*.db
+*.sqlite
+Thumbs.db
+[Dd]esktop.ini
