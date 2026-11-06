@@ -8,9 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Controladores y OpenAPI
+// Controladores y Swagger
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 // Configuración CORS para Angular
 builder.Services.AddCors(options =>
@@ -27,7 +28,11 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ProductsService API v1");
+    });
 }
 
 app.UseCors("AllowAngular");
