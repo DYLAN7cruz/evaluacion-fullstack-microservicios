@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { TransactionService } from '../../core/services/transaction.service';
 import { ProductService } from '../../core/services/product.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Transaction, TransactionCreate, TransactionFilter } from '../../core/models/transaction.model';
+import { Transaction, TransactionCreate, TransactionFilter, TransactionUpdate } from '../../core/models/transaction.model';
 import { Product } from '../../core/models/product.model';
 import { PagedResult } from '../../core/models/paged-result.model';
 
@@ -33,11 +33,22 @@ export class TransactionsComponent implements OnInit {
   filterForm!: FormGroup;
   availableProducts: Product[] = [];
 
-  // Modal Nueva Transacción
+  // Modal Crear / Editar Transacción
   isModalOpen = false;
+  isEditing = false;
+  selectedTransactionId: string | null = null;
   transactionForm!: FormGroup;
   selectedProduct: Product | null = null;
   isSaving = false;
+
+  // Modal Ver Detalle (Consulta de Información - Extra)
+  isDetailModalOpen = false;
+  transactionDetail: Transaction | null = null;
+
+  // Modal Confirmar Eliminación
+  isDeleteModalOpen = false;
+  transactionToDelete: Transaction | null = null;
+  isDeleting = false;
 
   constructor(
     private fb: FormBuilder,
@@ -77,8 +88,7 @@ export class TransactionsComponent implements OnInit {
     // Reaccionar al cambio de producto para autocompletar precio y stock
     this.transactionForm.get('productId')?.valueChanges.subscribe((prodId: string) => {
       this.selectedProduct = this.availableProducts.find(p => p.id === prodId) || null;
-      if (this.selectedProduct) {
-        // Autocompletar precio unitario sugerido del catálogo
+      if (this.selectedProduct && !this.isEditing) {
         this.transactionForm.patchValue({
           unitPrice: this.selectedProduct.price
         }, { emitEvent: false });
@@ -156,6 +166,8 @@ export class TransactionsComponent implements OnInit {
 
   // Abrir modal de nueva transacción
   openCreateModal(): void {
+    this.isEditing = false;
+    this.selectedTransactionId = null;
     this.selectedProduct = null;
     this.transactionForm.reset({
       transactionType: 'Venta',
@@ -164,12 +176,58 @@ export class TransactionsComponent implements OnInit {
       unitPrice: 0,
       detail: ''
     });
+    this.transactionForm.get('productId')?.enable();
     this.loadActiveProducts();
     this.isModalOpen = true;
     this.cdr.detectChanges();
   }
 
-  // Cerrar modal
+  // Abrir modal para editar transacción
+  openEditModal(t: Transaction): void {
+    this.isEditing = true;
+    this.selectedTransactionId = t.id;
+    this.selectedProduct = this.availableProducts.find(p => p.id === t.productId) || null;
+
+    this.transactionForm.patchValue({
+      transactionType: t.transactionType,
+      productId: t.productId,
+      quantity: t.quantity,
+      unitPrice: t.unitPrice,
+      detail: t.detail || ''
+    });
+
+    this.transactionForm.get('productId')?.disable();
+    this.isModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  // Abrir modal de consulta de información (pantalla extra para evidencias)
+  openDetailModal(t: Transaction): void {
+    this.transactionDetail = t;
+    this.isDetailModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeDetailModal(): void {
+    this.isDetailModalOpen = false;
+    this.transactionDetail = null;
+    this.cdr.detectChanges();
+  }
+
+  // Abrir modal de confirmación de eliminación
+  confirmDelete(t: Transaction): void {
+    this.transactionToDelete = t;
+    this.isDeleteModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeDeleteModal(): void {
+    this.isDeleteModalOpen = false;
+    this.transactionToDelete = null;
+    this.cdr.detectChanges();
+  }
+
+  // Cerrar modal de creación/edición
   closeModal(): void {
     this.isModalOpen = false;
     this.cdr.detectChanges();
@@ -183,7 +241,9 @@ export class TransactionsComponent implements OnInit {
     const qty = Number(this.transactionForm.get('quantity')?.value || 0);
 
     if (type === 'Venta' && this.selectedProduct) {
-      return qty > this.selectedProduct.stock;
+      if (!this.isEditing) {
+        return qty > this.selectedProduct.stock;
+      }
     }
     return false;
   }
@@ -195,7 +255,7 @@ export class TransactionsComponent implements OnInit {
     return qty * price;
   }
 
-  // Registrar transacción
+  // Registrar o Actualizar transacción
   saveTransaction(): void {
     if (this.transactionForm.invalid) {
       this.transactionForm.markAllAsTouched();
@@ -204,7 +264,6 @@ export class TransactionsComponent implements OnInit {
       return;
     }
 
-    // Validación compleja de negocio: Stock disponible
     if (this.hasInsufficientStock) {
       this.notify.error(
         `Operación rechazada: No se puede vender más stock del disponible (Máximo: ${this.selectedProduct?.stock} uds).`
@@ -215,32 +274,84 @@ export class TransactionsComponent implements OnInit {
 
     this.isSaving = true;
     this.cdr.detectChanges();
-    const vals = this.transactionForm.value;
+    const vals = this.transactionForm.getRawValue();
 
-    const dto: TransactionCreate = {
-      transactionType: vals.transactionType,
-      productId: vals.productId,
-      quantity: Number(vals.quantity),
-      unitPrice: Number(vals.unitPrice),
-      detail: vals.detail?.trim() || undefined
-    };
+    if (this.isEditing && this.selectedTransactionId) {
+      const updateDto: TransactionUpdate = {
+        transactionType: vals.transactionType,
+        quantity: Number(vals.quantity),
+        unitPrice: Number(vals.unitPrice),
+        detail: vals.detail?.trim() || undefined
+      };
 
-    this.transactionService.createTransaction(dto).subscribe({
-      next: (created) => {
-        this.isSaving = false;
-        this.closeModal();
-        this.notify.success(
-          `Transacción de ${created.transactionType} por $${created.totalPrice.toFixed(2)} registrada exitosamente.`
-        );
-        this.loadTransactions(1);
+      this.transactionService.updateTransaction(this.selectedTransactionId, updateDto).subscribe({
+        next: (updated) => {
+          this.isSaving = false;
+          this.closeModal();
+          this.notify.success(`Transacción actualizada exitosamente. Stock recalculado.`);
+          this.loadTransactions(this.pagedResult.page);
+          this.loadActiveProducts();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isSaving = false;
+          this.cdr.detectChanges();
+          const msg = this.extractErrorMessage(err, 'Error al actualizar la transacción.');
+          this.notify.error(msg);
+        }
+      });
+    } else {
+      const createDto: TransactionCreate = {
+        transactionType: vals.transactionType,
+        productId: vals.productId,
+        quantity: Number(vals.quantity),
+        unitPrice: Number(vals.unitPrice),
+        detail: vals.detail?.trim() || undefined
+      };
+
+      this.transactionService.createTransaction(createDto).subscribe({
+        next: (created) => {
+          this.isSaving = false;
+          this.closeModal();
+          this.notify.success(
+            `Transacción de ${created.transactionType} por $${created.totalPrice.toFixed(2)} registrada exitosamente.`
+          );
+          this.loadTransactions(1);
+          this.loadActiveProducts();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isSaving = false;
+          this.cdr.detectChanges();
+          const msg = this.extractErrorMessage(err, 'Error al procesar la transacción.');
+          this.notify.error(msg);
+        }
+      });
+    }
+  }
+
+  // Eliminar transacción
+  deleteTransaction(): void {
+    if (!this.transactionToDelete) return;
+
+    this.isDeleting = true;
+    this.cdr.detectChanges();
+
+    this.transactionService.deleteTransaction(this.transactionToDelete.id).subscribe({
+      next: () => {
+        this.isDeleting = false;
+        this.notify.success('Transacción eliminada exitosamente y stock revertido.');
+        this.closeDeleteModal();
+        this.loadTransactions(this.pagedResult.page);
         this.loadActiveProducts();
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.isSaving = false;
+        this.isDeleting = false;
         this.cdr.detectChanges();
-        const msg = err.error?.message || 'Error al procesar la transacción.';
+        const msg = this.extractErrorMessage(err, 'Error al eliminar la transacción.');
         this.notify.error(msg);
+        this.closeDeleteModal();
       }
     });
   }
@@ -249,5 +360,21 @@ export class TransactionsComponent implements OnInit {
   isFieldInvalid(name: string): boolean {
     const control = this.transactionForm.get(name);
     return !!(control && control.invalid && (control.dirty || control.touched));
+  }
+
+  private extractErrorMessage(err: any, defaultMsg: string): string {
+    if (err.status === 0) {
+      return 'No se pudo conectar con el microservicio de transacciones (puerto 5002).';
+    }
+    if (err.error?.message) {
+      return err.error.message;
+    }
+    if (err.error?.errors) {
+      const firstKey = Object.keys(err.error.errors)[0];
+      if (firstKey && err.error.errors[firstKey].length > 0) {
+        return err.error.errors[firstKey][0];
+      }
+    }
+    return defaultMsg;
   }
 }

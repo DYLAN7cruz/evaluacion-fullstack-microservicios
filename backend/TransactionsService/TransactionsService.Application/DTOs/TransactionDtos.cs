@@ -21,6 +21,22 @@ public class TransactionCreateDto
     public string? Detail { get; set; }
 }
 
+// DTO para actualizar transacción existente
+public class TransactionUpdateDto
+{
+    [Required(ErrorMessage = "El tipo de transacción es obligatorio.")]
+    [RegularExpression("^(Compra|Venta)$", ErrorMessage = "El tipo debe ser 'Compra' o 'Venta'.")]
+    public string TransactionType { get; set; } = string.Empty;
+
+    [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser mayor a 0.")]
+    public int Quantity { get; set; }
+
+    [Range(0, 9999999.99, ErrorMessage = "El precio unitario debe ser mayor o igual a 0.")]
+    public decimal? UnitPrice { get; set; }
+
+    public string? Detail { get; set; }
+}
+
 // DTO de respuesta para frontend con datos enriquecidos del producto
 public class TransactionResponseDto
 {

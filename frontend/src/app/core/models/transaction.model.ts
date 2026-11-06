@@ -21,6 +21,13 @@ export interface TransactionCreate {
   detail?: string;
 }
 
+export interface TransactionUpdate {
+  transactionType: 'Compra' | 'Venta';
+  quantity: number;
+  unitPrice?: number;
+  detail?: string;
+}
+
 export interface TransactionFilter {
   productId?: string;
   transactionType?: string;

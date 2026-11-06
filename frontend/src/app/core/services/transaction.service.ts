@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { PagedResult } from '../models/paged-result.model';
-import { Transaction, TransactionCreate, TransactionFilter } from '../models/transaction.model';
+import { Transaction, TransactionCreate, TransactionFilter, TransactionUpdate } from '../models/transaction.model';
 
 @Injectable({
   providedIn: 'root'
@@ -42,8 +42,18 @@ export class TransactionService {
     return this.http.get<Transaction>(`${this.apiUrl}/${id}`);
   }
 
-  // Registrar nueva transacción (inmutable)
+  // Registrar nueva transacción
   createTransaction(dto: TransactionCreate): Observable<Transaction> {
     return this.http.post<Transaction>(this.apiUrl, dto);
+  }
+
+  // Editar transacción existente
+  updateTransaction(id: string, dto: TransactionUpdate): Observable<Transaction> {
+    return this.http.put<Transaction>(`${this.apiUrl}/${id}`, dto);
+  }
+
+  // Eliminar transacción
+  deleteTransaction(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 }

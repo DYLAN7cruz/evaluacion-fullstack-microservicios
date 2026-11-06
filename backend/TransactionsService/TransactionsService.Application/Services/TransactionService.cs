@@ -175,4 +175,105 @@ public class TransactionService : ITransactionService
             CreatedAt = created.CreatedAt
         };
     }
+
+    // Editar transacción existente y reajustar stock
+    public async Task<TransactionResponseDto?> UpdateAsync(Guid id, TransactionUpdateDto dto)
+    {
+        var existing = await _transactionRepository.GetByIdAsync(id);
+        if (existing is null) return null;
+
+        var product = await _productClient.GetProductByIdAsync(existing.ProductId);
+        if (product is null)
+        {
+            throw new KeyNotFoundException($"El producto asociado a la transacción no existe.");
+        }
+
+        var newType = char.ToUpper(dto.TransactionType[0]) + dto.TransactionType[1..].ToLower();
+        if (newType != "Compra" && newType != "Venta")
+        {
+            throw new ArgumentException("El tipo de transacción debe ser 'Compra' o 'Venta'.");
+        }
+
+        // 1. Revertir el efecto de la transacción anterior en el stock
+        int baseStock = existing.TransactionType == "Compra"
+            ? product.Stock - existing.Quantity
+            : product.Stock + existing.Quantity;
+
+        // 2. Aplicar y validar el nuevo efecto
+        int newStock;
+        if (newType == "Venta")
+        {
+            if (baseStock < dto.Quantity)
+            {
+                throw new InvalidOperationException(
+                    $"Stock insuficiente. El producto dispone de {baseStock} unidades para venta y se intentó modificar a {dto.Quantity}.");
+            }
+            newStock = baseStock - dto.Quantity;
+        }
+        else
+        {
+            newStock = baseStock + dto.Quantity;
+        }
+
+        // 3. Actualizar stock en ProductsService si hubo cambio
+        if (newStock != product.Stock)
+        {
+            var updated = await _productClient.UpdateProductStockAsync(existing.ProductId, newStock);
+            if (!updated)
+            {
+                throw new InvalidOperationException("No se pudo actualizar el stock en el microservicio de productos.");
+            }
+        }
+
+        // 4. Determinar precio unitario
+        var finalUnitPrice = (dto.UnitPrice.HasValue && dto.UnitPrice.Value > 0)
+            ? dto.UnitPrice.Value
+            : product.Price;
+
+        // 5. Actualizar entidad
+        existing.TransactionType = newType;
+        existing.Quantity = dto.Quantity;
+        existing.UnitPrice = finalUnitPrice;
+        existing.TotalPrice = dto.Quantity * finalUnitPrice;
+        existing.Detail = dto.Detail?.Trim();
+
+        var saved = await _transactionRepository.UpdateAsync(existing);
+        if (saved is null) return null;
+
+        return new TransactionResponseDto
+        {
+            Id = saved.Id,
+            TransactionDate = saved.TransactionDate,
+            TransactionType = saved.TransactionType,
+            ProductId = saved.ProductId,
+            ProductName = product.Name,
+            ProductCode = product.Code,
+            ProductStock = newStock,
+            Quantity = saved.Quantity,
+            UnitPrice = saved.UnitPrice,
+            TotalPrice = saved.TotalPrice,
+            Detail = saved.Detail,
+            CreatedAt = saved.CreatedAt
+        };
+    }
+
+    // Eliminar transacción y revertir su impacto en el stock
+    public async Task<bool> DeleteAsync(Guid id)
+    {
+        var existing = await _transactionRepository.GetByIdAsync(id);
+        if (existing is null) return false;
+
+        var product = await _productClient.GetProductByIdAsync(existing.ProductId);
+        if (product != null)
+        {
+            int revertedStock = existing.TransactionType == "Compra"
+                ? product.Stock - existing.Quantity
+                : product.Stock + existing.Quantity;
+
+            revertedStock = revertedStock < 0 ? 0 : revertedStock;
+            await _productClient.UpdateProductStockAsync(existing.ProductId, revertedStock);
+        }
+
+        return await _transactionRepository.DeleteAsync(id);
+    }
 }

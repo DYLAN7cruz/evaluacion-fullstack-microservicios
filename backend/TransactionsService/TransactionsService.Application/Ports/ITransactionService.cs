@@ -15,4 +15,6 @@ public interface ITransactionService
 
     Task<TransactionResponseDto?> GetByIdAsync(Guid id);
     Task<TransactionResponseDto> CreateAsync(TransactionCreateDto dto);
+    Task<TransactionResponseDto?> UpdateAsync(Guid id, TransactionUpdateDto dto);
+    Task<bool> DeleteAsync(Guid id);
 }

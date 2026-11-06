@@ -73,4 +73,21 @@ public class TransactionRepository : ITransactionRepository
         await _context.SaveChangesAsync();
         return transaction;
     }
+
+    public async Task<Transaction?> UpdateAsync(Transaction transaction)
+    {
+        _context.Transactions.Update(transaction);
+        await _context.SaveChangesAsync();
+        return transaction;
+    }
+
+    public async Task<bool> DeleteAsync(Guid id)
+    {
+        var transaction = await _context.Transactions.FindAsync(id);
+        if (transaction is null) return false;
+
+        _context.Transactions.Remove(transaction);
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }

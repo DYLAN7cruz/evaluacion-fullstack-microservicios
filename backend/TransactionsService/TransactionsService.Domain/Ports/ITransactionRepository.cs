@@ -2,7 +2,7 @@ using TransactionsService.Domain.Entities;
 
 namespace TransactionsService.Domain.Ports;
 
-// Contrato para persistencia de transacciones (inmutable)
+// Contrato para persistencia de transacciones
 public interface ITransactionRepository
 {
     Task<(IEnumerable<Transaction> Items, int TotalCount)> GetFilteredAsync(
@@ -15,4 +15,6 @@ public interface ITransactionRepository
 
     Task<Transaction?> GetByIdAsync(Guid id);
     Task<Transaction> CreateAsync(Transaction transaction);
+    Task<Transaction?> UpdateAsync(Transaction transaction);
+    Task<bool> DeleteAsync(Guid id);
 }

@@ -43,7 +43,7 @@ public class TransactionsController : ControllerBase
         return Ok(item);
     }
 
-    // POST: api/transactions (registrar compra o venta inmutable)
+    // POST: api/transactions (registrar compra o venta)
     [HttpPost]
     public async Task<ActionResult<TransactionResponseDto>> Create([FromBody] TransactionCreateDto dto)
     {
@@ -63,12 +63,55 @@ public class TransactionsController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // Errores de negocio (como stock insuficiente al vender)
             return BadRequest(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    // PUT: api/transactions/{id} (editar transacción y reajustar stock)
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<TransactionResponseDto>> Update(Guid id, [FromBody] TransactionUpdateDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var updated = await _transactionService.UpdateAsync(id, dto);
+            if (updated is null)
+            {
+                return NotFound(new { message = $"No se encontró la transacción con Id '{id}'." });
+            }
+            return Ok(updated);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // DELETE: api/transactions/{id} (eliminar transacción y revertir stock)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var deleted = await _transactionService.DeleteAsync(id);
+        if (!deleted)
+        {
+            return NotFound(new { message = $"No se encontró la transacción con Id '{id}'." });
+        }
+        return NoContent();
     }
 }
